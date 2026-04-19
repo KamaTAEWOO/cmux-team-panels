@@ -1,29 +1,19 @@
 #!/usr/bin/env bash
-# team-panels installer — places files into ~/.claude/skills/ with the layout
-# Claude Code expects for a standalone-file skill with sibling resource folder.
+# team-panels installer — run this from inside the cloned repo.
+# The repo is expected to live at ~/.claude/skills/team-panels/ so that
+# Claude Code discovers SKILL.md (a symlink to team-panels.md).
 set -euo pipefail
 
-SKILLS="$HOME/.claude/skills"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILL_NAME="team-panels"
-SKILL_FILE="$SKILL_NAME.md"
-TARGET_DIR="$SKILLS/$SKILL_NAME"
+SKILLS="$HOME/.claude/skills"
+TARGET="$SKILLS/team-panels"
 
-mkdir -p "$SKILLS"
+chmod +x "$SRC_DIR/scripts/"*.sh
 
-# Skill definition → ~/.claude/skills/team-panels.md
-if [[ "$SRC_DIR/$SKILL_FILE" != "$SKILLS/$SKILL_FILE" ]]; then
-  cp "$SRC_DIR/$SKILL_FILE" "$SKILLS/$SKILL_FILE"
+if [[ "$SRC_DIR" != "$TARGET" ]]; then
+  echo "warn: this repo is at $SRC_DIR — Claude Code expects it at $TARGET."
+  echo "      move/clone the repo to $TARGET, or create a symlink:"
+  echo "        ln -s \"$SRC_DIR\" \"$TARGET\""
+else
+  echo "team-panels installed — Claude Code will pick up SKILL.md (-> team-panels.md)."
 fi
-
-# Resource scripts → ~/.claude/skills/team-panels/scripts/
-mkdir -p "$TARGET_DIR/scripts"
-if [[ "$SRC_DIR/scripts" != "$TARGET_DIR/scripts" ]]; then
-  cp "$SRC_DIR/scripts/run.sh" "$SRC_DIR/scripts/role.sh" "$TARGET_DIR/scripts/"
-fi
-chmod +x "$TARGET_DIR/scripts/"*.sh
-
-echo "team-panels installed:"
-echo "  $SKILLS/$SKILL_FILE"
-echo "  $TARGET_DIR/scripts/run.sh"
-echo "  $TARGET_DIR/scripts/role.sh"

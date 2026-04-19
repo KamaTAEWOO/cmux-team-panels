@@ -31,26 +31,28 @@ team-panels spins up each specialist as a **separate `claude -p` process** with 
 
 ## Install
 
-Clone anywhere and run the installer:
+Clone directly into the Claude Code skills folder and run the installer to fix permissions:
 
 ```bash
-git clone https://github.com/KamaTAEWOO/team-panels.git
-cd team-panels
+git clone https://github.com/KamaTAEWOO/team-panels.git ~/.claude/skills/team-panels
+cd ~/.claude/skills/team-panels
 ./install.sh
 ```
 
-This follows the same convention as `ui-ux-pro-max`: the skill definition lives at `~/.claude/skills/team-panels.md` while resource scripts live at `~/.claude/skills/team-panels/scripts/`.
-
-### What the installer does
+### Installed layout
 
 ```
-~/.claude/skills/
-├── team-panels.md          ← skill definition (frontmatter + usage)
-└── team-panels/
-    └── scripts/
-        ├── run.sh          ← entry point (called by the skill)
-        └── role.sh         ← per-panel role runner
+~/.claude/skills/team-panels/
+├── SKILL.md → team-panels.md   ← symlink so Claude Code auto-discovers the skill
+├── team-panels.md              ← actual skill definition (frontmatter + usage)
+├── scripts/
+│   ├── run.sh                  ← entry point (called by the skill)
+│   └── role.sh                 ← per-panel role runner
+├── install.sh
+└── README.md
 ```
+
+The symlink lets you keep the canonical file named `team-panels.md` while still satisfying Claude Code's `SKILL.md` discovery convention.
 
 ## Usage
 
