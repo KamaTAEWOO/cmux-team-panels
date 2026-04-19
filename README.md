@@ -1,167 +1,167 @@
 # team-panels
 
-**cmux 기반 Claude Code 팀 에이전트 스킬** — 기획(PM/리드)이 작업을 분석해 필요한 전문가 역할만 골라 격리 워크스페이스에서 순차 실행합니다.
+**A cmux-based team-agent skill for Claude Code** — the Planner (PM/Lead) analyzes the task and picks only the specialist roles it needs, running them sequentially in an isolated workspace.
 
-12종의 전문가 역할 풀(기획·리서치·아키텍트·DBA·디자인·UX라이터·개발·보안·코드리뷰·DevOps·테스트·테크라이터)에서 기획이 자동으로 조합을 고르고, 각 역할이 자기 패널에서 독립 실행되며, 마지막 역할 완료 시 워크스페이스 전체가 자동 정리됩니다.
+From a pool of 12 specialist roles (Planner · Researcher · Architect · DBA · Designer · UX Writer · Developer · Security · Code Reviewer · DevOps · Tester · Tech Writer), the Planner automatically composes the right combination. Each role runs as an independent `claude -p` process in its own panel, and when the final role finishes, the entire workspace is auto-closed (output files are preserved).
 
-## 왜 이 스킬이 필요한가
+## Why this skill
 
-혼자 모든 관점(기획·설계·구현·테스트…)을 한 컨텍스트에 쏟으면 다음과 같은 문제가 생깁니다.
+Stuffing every perspective (planning, design, implementation, review…) into a single context causes predictable problems:
 
-- **컨텍스트 포화**: 역할 간 프롬프트가 섞여 각 산출물 품질이 떨어짐
-- **편향된 판단**: 같은 에이전트가 설계·검토를 모두 하면 자기 결정을 검증하지 않음
-- **중단된 체인**: 한 번에 다 하려다 중간에 누락
+- **Context saturation**: role prompts bleed into each other and each output gets worse
+- **Biased judgment**: the same agent both designs and reviews — it won't challenge its own decisions
+- **Broken chains**: trying to do everything at once leads to skipped steps
 
-team-panels는 각 전문가를 **독립된 `claude -p` 프로세스**로 띄워 역할별로 깨끗한 프롬프트를 제공하고, 이전 단계의 산출물만 컨텍스트로 전달합니다. 결과는 모두 파일로 남고, 사용자 작업 공간은 새 워크스페이스로 격리되어 오염되지 않습니다.
+team-panels spins up each specialist as a **separate `claude -p` process** with a clean, role-specific prompt, passing only the outputs of previous stages as context. All results are persisted to files, and the whole chain runs in a new cmux workspace so your current work area stays untouched.
 
-## 주요 특징
+## Key features
 
-- **격리 워크스페이스**: 전체 체인이 새로운 cmux 워크스페이스 안에서만 진행 → 기존 작업 영향 없음
-- **기획 = 팀 리드**: 작업 성격에 따라 필요한 전문가만 `<next-roles>` 마커로 지정
-- **자동 포커스 복귀**: 새 워크스페이스 생성 후 사용자 포커스는 원래 위치로 복원
-- **순차 체인**: 각 패널이 완료되면 다음 역할 패널을 자동으로 생성
-- **완료 시 일괄 정리**: 마지막 역할이 끝나면 워크스페이스 전체를 close (산출물 파일은 보존)
-- **기본 체인 폴백**: 기획이 체인을 비우면 `03(아키텍트)·05(디자인)·07(개발)·11(테스트)` 기본 체인 강제
+- **Isolated workspace**: the entire chain runs inside a freshly created cmux workspace → zero impact on your current work
+- **Planner as team lead**: the Planner picks the necessary specialists via a `<next-roles>` marker
+- **Focus preservation**: after spawning the new workspace, focus is restored to your original workspace
+- **Sequential chain**: each panel spawns the next role's panel when it finishes
+- **Clean shutdown**: once the last role finishes, the whole workspace is closed (output `.md` files remain on disk)
+- **Default-chain fallback**: if the Planner leaves `<next-roles>` empty, a default chain of `03(Architect) · 05(Designer) · 07(Developer) · 11(Tester)` is forced
 
-## 요구사항
+## Requirements
 
-- [cmux](https://github.com/ibberson/cmux) 터미널 (바이너리 경로: `/Applications/cmux.app/Contents/Resources/bin/cmux`)
+- [cmux](https://github.com/ibberson/cmux) terminal (binary path: `/Applications/cmux.app/Contents/Resources/bin/cmux`)
 - [Claude Code](https://claude.com/claude-code) CLI
-- cmux 터미널 세션 내에서 실행 (`$CMUX_WORKSPACE_ID` 환경변수 필요)
+- Must run from inside a cmux terminal session (`$CMUX_WORKSPACE_ID` must be set)
 
-## 설치
+## Install
 
 ```bash
 git clone https://github.com/KamaTAEWOO/team-panels.git ~/.claude/skills/team-panels
 chmod +x ~/.claude/skills/team-panels/*.sh
 ```
 
-## 사용법
+## Usage
 
-Claude Code 세션 안에서 슬래시 명령으로 호출합니다.
-
-```
-/team-panels 간단한 카운터 웹앱 설계해줘
-/team-panels 결제 API 보안 점검
-/team-panels 릴리즈 준비
-```
-
-또는 Claude Code가 자연어에서 의도를 감지해 자동 호출하기도 합니다("팀으로 해봐", "패널 나눠서" 등).
-
-### 실행 흐름
+Invoke from inside a Claude Code session as a slash command:
 
 ```
-/team-panels "작업 설명"
-  ↓
-새 cmux 워크스페이스 생성 (이름: team-panels)
-  ↓
-[기획] 패널 실행 — 요구사항 분석 + 후속 역할 선택
-  ↓
-<next-roles>03,05,07,11</next-roles>  ← 기획이 출력
-  ↓
-[아키텍트] → [디자인] → [개발] → [테스트] 순차 실행
-  ↓
-5초 대기 후 워크스페이스 전체 close (산출물은 보존)
+/team-panels design a simple counter web app
+/team-panels security review for the payment API
+/team-panels prepare release
 ```
 
-## 역할 풀
+Claude Code may also auto-invoke it when it detects the intent in natural language ("let's do this as a team", "split into panels", etc.).
 
-| 번호 | 역할 | 산출물 |
+### Execution flow
+
+```
+/team-panels "<task description>"
+  ↓
+New cmux workspace is created (named: team-panels)
+  ↓
+[Planner] panel runs — analyzes requirements, picks follow-up roles
+  ↓
+<next-roles>03,05,07,11</next-roles>   ← emitted by Planner
+  ↓
+[Architect] → [Designer] → [Developer] → [Tester] run sequentially
+  ↓
+After 5s wait, the workspace is closed (output files remain)
+```
+
+## Role pool
+
+| # | Role | Output |
 |:---:|---|---|
-| 01 | 기획(PM/리드) | 요구사항, 유저 스토리, 수용 기준, 후속 역할 선택 |
-| 02 | 리서치 | 시장/경쟁사/유저 인사이트, 참고 사례 |
-| 03 | 아키텍트 | 시스템 다이어그램, 데이터 흐름, 기술 스택 근거 |
-| 04 | DBA | 엔티티·스키마·인덱스, 마이그레이션 전략 |
-| 05 | 디자인 | 화면 흐름, 컴포넌트, 인터랙션, 와이어프레임 |
-| 06 | UX라이터 | 카피, 에러/성공/빈상태 문구, 톤앤매너 |
-| 07 | 개발 | 파일 구조, 함수 시그니처, 의사코드, 에러 처리 |
-| 08 | 보안 | STRIDE 위협, OWASP 체크, 인증·인가, 민감 데이터 |
-| 09 | 코드리뷰 | 리스크, 개선 체크리스트, 추천 리팩토링 |
-| 10 | DevOps/SRE | CI/CD, 환경 구성, 모니터링, 롤백 전략 |
-| 11 | 테스트(QA) | 테스트 피라미드, 케이스, 자동화 범위 |
-| 12 | 테크라이터 | README, API 명세, 온보딩 가이드 |
+| 01 | Planner (PM/Lead) | requirements, user stories, acceptance criteria, follow-up role selection |
+| 02 | Researcher | market/competitor/user insights, reference cases |
+| 03 | Architect | system diagrams, data flow, tech stack rationale |
+| 04 | DBA | entities, schema, indexes, migration strategy |
+| 05 | Designer | screen flow, components, interactions, wireframes |
+| 06 | UX Writer | copy, error/success/empty-state text, tone & manner |
+| 07 | Developer | file structure, function signatures, pseudocode, error handling |
+| 08 | Security | STRIDE threats, OWASP checks, authn/authz, sensitive data handling |
+| 09 | Code Reviewer | risks, improvement checklist, recommended refactors |
+| 10 | DevOps/SRE | CI/CD, env configs, monitoring, rollback strategy |
+| 11 | Tester (QA) | test pyramid, cases, automation scope |
+| 12 | Tech Writer | README, API spec, onboarding guide |
 
-## 호출 조합 가이드
+## Recommended combinations
 
-기획이 작업 종류에 따라 자동으로 `<next-roles>` 조합을 결정합니다.
+The Planner auto-selects a `<next-roles>` combination based on task type.
 
-| 작업 유형 | 추천 조합 |
+| Task type | Recommended combo |
 |---|---|
-| 단순 카피/문구 수정 | `06` |
-| 간단 웹앱 (카운터/메모/타이머) | `03,05,07,11` (기본 체인) |
-| 일반 웹 기능 | `02,03,05,07,09,11` |
-| DB가 있는 기능 | `02,03,04,05,07,09,11` |
-| 보안 민감 기능 | `02,03,04,08,07,09,11` |
-| 릴리즈 준비/운영화 | `09,11,10,12` |
-| 사실 질문/한 줄 답변 | `<next-roles></next-roles>` (기획 단독) |
+| Simple copy/text edit | `06` |
+| Simple web app (counter/memo/timer) | `03,05,07,11` (default chain) |
+| General web feature | `02,03,05,07,09,11` |
+| Feature with a database | `02,03,04,05,07,09,11` |
+| Security-sensitive feature | `02,03,04,08,07,09,11` |
+| Release / operationalization | `09,11,10,12` |
+| Factual Q&A / one-line answer | `<next-roles></next-roles>` (Planner only) |
 
-## 산출물 위치
+## Output location
 
-실행할 때마다 고유한 타임스탬프 디렉토리가 생성됩니다.
+Each run creates a unique timestamped work directory.
 
 ```
 ~/.cmux-team/20260419-104555/
-├── TASK.md              # 원본 작업 설명
-├── plan.tsv             # 역할 실행 계획
-├── prompts/             # 역할별 시스템 프롬프트
+├── TASK.md              # original task description
+├── plan.tsv             # role execution plan
+├── prompts/             # per-role system prompts
 │   ├── 01.txt
 │   ├── 02.txt
 │   └── ...
-└── outputs/             # 역할별 산출물 (메인 결과)
-    ├── 01-기획.md
-    ├── 03-아키텍트.md
-    ├── 05-디자인.md
-    ├── 07-개발.md
-    └── 11-테스트.md
+└── outputs/             # per-role output (main results)
+    ├── 01-Planner.md
+    ├── 03-Architect.md
+    ├── 05-Designer.md
+    ├── 07-Developer.md
+    └── 11-Tester.md
 ```
 
-워크스페이스가 close돼도 `outputs/` 파일은 남으므로 언제든 다시 읽을 수 있습니다.
+Even after the workspace closes, files under `outputs/` stay on disk — you can read them anytime.
 
-## 구조
+## Repo layout
 
 ```
 team-panels/
-├── SKILL.md      # Claude Code 스킬 메타데이터
-├── run.sh        # 진입점 — 새 워크스페이스 생성 + 첫 패널 실행
-├── role.sh       # 각 패널에서 실행되는 단일 역할 러너
-└── README.md     # 이 파일
+├── SKILL.md      # Claude Code skill metadata
+├── run.sh        # entry point — creates workspace + runs first panel
+├── role.sh       # per-panel single-role runner
+└── README.md     # this file
 ```
 
-- `run.sh`: 작업을 받아 workdir를 만들고, 12개 역할 정의를 `plan.tsv`로 저장한 뒤, 새 워크스페이스의 첫 터미널에서 기획 역할을 실행합니다. 이후 즉시 반환하여 사용자 포커스를 빼앗지 않습니다.
-- `role.sh`: 각 패널에서 실행되어 자기 역할의 `claude -p`를 돌리고, 산출물을 저장한 후, `plan.tsv`를 보고 다음 역할 패널을 생성합니다. 마지막 역할이면 워크스페이스 전체를 close합니다.
+- `run.sh`: takes the task, creates the workdir, writes the 12-role definitions into `plan.tsv`, then runs the Planner role in the first terminal of a new workspace. Returns immediately so your focus isn't stolen.
+- `role.sh`: runs inside each panel — executes `claude -p` for its role, saves the output, reads `plan.tsv` to spawn the next role's panel. If it's the last role, it closes the whole workspace.
 
-## 동작 세부
+## How it works
 
-### 기획 에이전트의 후속 역할 선택
+### The Planner chooses follow-up roles
 
-기획 프롬프트는 출력 마지막 줄에 `<next-roles>번호,번호,...</next-roles>` 마커를 반드시 포함하도록 지시받습니다. 여기에 명시한 번호의 역할만 순차 실행됩니다.
+The Planner prompt requires a `<next-roles>NUMBER,NUMBER,...</next-roles>` marker on the last line of its output. Only the listed role numbers run, in order.
 
-빈 태그(`<next-roles></next-roles>`) 또는 마커 누락 시 **기본 체인 `03,05,07,11`이 강제**됩니다 (폴백 안전장치).
+If the tag is empty (`<next-roles></next-roles>`) or missing, the **default chain `03,05,07,11` is forced** as a safety fallback.
 
-### 이전 단계 산출물 전달
+### Previous-stage outputs are passed forward
 
-각 역할은 `outputs/` 아래 이전 산출물들을 모두 모아 자기 프롬프트의 "이전 단계 산출물" 섹션에 주입받습니다. 따라서 디자인은 기획을 읽고, 개발은 기획·아키텍트·디자인을 모두 읽은 상태로 실행됩니다.
+Each role collects all previously produced files under `outputs/` and injects them into the "previous stages" section of its own prompt. So the Designer reads the Planner's output, the Developer reads Planner + Architect + Designer, and so on.
 
-### 포커스 복귀
+### Focus restoration
 
-`run.sh`가 새 워크스페이스를 만든 직후 `select-workspace`로 원래 워크스페이스를 다시 선택합니다. 중간 역할이 다음 패널을 만들 때마다도 동일하게 포커스를 복귀시켜, 사용자의 현재 작업이 방해받지 않습니다.
+Right after creating the new workspace, `run.sh` calls `select-workspace` to bring focus back to the original workspace. Every time a mid-chain role spawns the next panel, focus is restored again — your active work area is never hijacked.
 
-### 실패 내성
+### Fault tolerance
 
-- 한 역할이 실패해도 로그는 산출물 파일에 남고, 다음 역할 패널은 그대로 열립니다.
-- 부분 실패 상태에서도 워크스페이스는 정상 close됩니다.
+- If a role fails, the log is preserved in its output file and the next panel still opens.
+- The workspace is cleanly closed even in partial-failure states.
 
-## 제한사항
+## Limitations
 
-- cmux 터미널 세션 안에서만 작동 (`$CMUX_WORKSPACE_ID` 필수)
-- cmux 바이너리 경로가 하드코딩되어 있음 (`/Applications/cmux.app/Contents/Resources/bin/cmux`) — 필요 시 `run.sh`/`role.sh`에서 수정
-- 각 `claude -p`는 `--dangerously-skip-permissions` 플래그로 실행 — 파일 쓰기 자동 허용
-- macOS에서 테스트됨
+- Only works inside a cmux terminal session (`$CMUX_WORKSPACE_ID` is required)
+- The cmux binary path is hardcoded (`/Applications/cmux.app/Contents/Resources/bin/cmux`) — edit `run.sh` / `role.sh` if needed
+- Each `claude -p` is launched with `--dangerously-skip-permissions` (file writes are auto-approved)
+- Tested on macOS
 
-## 라이선스
+## License
 
 MIT
 
-## 기여
+## Contributing
 
-Issue / PR 환영합니다.
+Issues and PRs welcome.
