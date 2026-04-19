@@ -121,10 +121,10 @@ Even after the workspace closes, files under `outputs/` stay on disk — you can
 
 ```
 team-panels/
-├── SKILL.md      # Claude Code skill metadata
-├── run.sh        # entry point — creates workspace + runs first panel
-├── role.sh       # per-panel single-role runner
-└── README.md     # this file
+├── team-panels.md   # Claude Code skill metadata
+├── run.sh           # entry point — creates workspace + runs first panel
+├── role.sh          # per-panel single-role runner
+└── README.md        # this file
 ```
 
 - `run.sh`: takes the task, creates the workdir, writes the 12-role definitions into `plan.tsv`, then runs the Planner role in the first terminal of a new workspace. Returns immediately so your focus isn't stolen.
