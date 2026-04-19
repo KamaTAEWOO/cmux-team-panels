@@ -13,7 +13,7 @@ if [[ -z "$WORK_DIR" || -z "$NUM" ]]; then
 fi
 
 CMUX="/Applications/cmux.app/Contents/Resources/bin/cmux"
-SKILL_DIR="$HOME/.claude/skills/team-panels"
+SKILL_DIR="$HOME/.claude/skills/team-panels/scripts"
 PLAN="$WORK_DIR/plan.tsv"
 TASK_FILE="$WORK_DIR/TASK.md"
 OUT_DIR="$WORK_DIR/outputs"

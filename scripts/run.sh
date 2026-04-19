@@ -13,7 +13,7 @@ if [[ -z "${CMUX_WORKSPACE_ID:-}" ]]; then
 fi
 
 CMUX="/Applications/cmux.app/Contents/Resources/bin/cmux"
-SKILL_DIR="$HOME/.claude/skills/team-panels"
+SKILL_DIR="$HOME/.claude/skills/team-panels/scripts"
 TS="$(date +%Y%m%d-%H%M%S)"
 WORK_DIR="$HOME/.cmux-team/$TS"
 OUT_DIR="$WORK_DIR/outputs"

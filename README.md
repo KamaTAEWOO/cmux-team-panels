@@ -31,9 +31,25 @@ team-panels spins up each specialist as a **separate `claude -p` process** with 
 
 ## Install
 
+Clone anywhere and run the installer:
+
 ```bash
-git clone https://github.com/KamaTAEWOO/team-panels.git ~/.claude/skills/team-panels
-chmod +x ~/.claude/skills/team-panels/*.sh
+git clone https://github.com/KamaTAEWOO/team-panels.git
+cd team-panels
+./install.sh
+```
+
+This follows the same convention as `ui-ux-pro-max`: the skill definition lives at `~/.claude/skills/team-panels.md` while resource scripts live at `~/.claude/skills/team-panels/scripts/`.
+
+### What the installer does
+
+```
+~/.claude/skills/
+├── team-panels.md          ← skill definition (frontmatter + usage)
+└── team-panels/
+    └── scripts/
+        ├── run.sh          ← entry point (called by the skill)
+        └── role.sh         ← per-panel role runner
 ```
 
 ## Usage
@@ -122,8 +138,10 @@ Even after the workspace closes, files under `outputs/` stay on disk — you can
 ```
 team-panels/
 ├── team-panels.md   # Claude Code skill metadata
-├── run.sh           # entry point — creates workspace + runs first panel
-├── role.sh          # per-panel single-role runner
+├── scripts/
+│   ├── run.sh       # entry point — creates workspace + runs first panel
+│   └── role.sh      # per-panel single-role runner
+├── install.sh       # copies files into ~/.claude/skills/
 └── README.md        # this file
 ```
 
